@@ -6,6 +6,8 @@ const ManageController = require('../controllers/manageController');
 const router = express.Router();
 
 router.get('/getUsers', (req, res, next) => authMiddleware(req, res, next, 'admin'), ManageController.getUsers);
+router.get('/getRoutesAuth', (req, res, next) => authMiddleware(req, res, next, 'admin'), ManageController.getRoutesAuth);
+router.post('/updateRoutesAuth', (req, res, next) => authMiddleware(req, res, next, 'admin'), ManageController.updateRoutesAuth);
 
 // Log routes for debugging
 console.log('Registered routes:');

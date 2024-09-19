@@ -4,7 +4,6 @@ const { pool } = require("../config/database");
 class RouteAuth {
     static proceedData(raw) {
         if (!raw) return;
-        delete raw['id']
         delete raw['enable']
         return {
             ...raw,
@@ -33,6 +32,39 @@ class RouteAuth {
             });
 
             return filteredRoutes.map((v) => this.proceedData(v)); // Return the filtered records
+        } catch (error) {
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    static async getRoutesAuth() {
+        var connection = await pool.getConnection();
+        try {
+            // Fetch all records where enable = 1
+            const [result] = await connection.query(
+                'SELECT * FROM routes_auth WHERE enable = ?',
+                [1]
+            );
+            return result.map((v) => this.proceedData(v)); // Return the filtered records
+        } catch (error) {
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    static async updateRoutesAuth(routesAuth) {
+        var connection = await pool.getConnection();
+        try {
+            for (const route of routesAuth) {
+                // Update each route based on its ID
+                await connection.query(
+                    'UPDATE routes_auth SET role = ? WHERE id = ?',
+                    [route, route.id]
+                );
+            }
         } catch (error) {
             throw error;
         } finally {

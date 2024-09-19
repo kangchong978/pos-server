@@ -61,7 +61,7 @@ async function initializeDatabase() {
             { route: '/sales', role: 'admin' },
             { route: '/orders', role: 'admin' },
             { route: '/analytics', role: 'admin' },
-            { route: '/employee', role: 'admin' },
+            { route: '/employees', role: 'admin' },
             { route: '/settings', role: 'admin' }
         ];
 
@@ -83,6 +83,18 @@ async function initializeDatabase() {
                 console.log(`Record already exists for route: ${route}`);
             }
         }
+        // Ensure the products table exists
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS products (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                image VARCHAR(255),
+                category VARCHAR(100),
+                description TEXT,
+                price DECIMAL(10, 2) NOT NULL
+            );
+        `);
+
 
         // Add more table creation queries as needed
     } catch (error) {
