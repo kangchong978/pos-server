@@ -3,6 +3,9 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const manageRoutes = require('./routes/manageRoutes');
 const productRoutes = require('./routes/productRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const saleRoutes = require('./routes/saleRoutes');
 const cors = require('cors');
 const { initializeDatabase } = require('./config/database');
 
@@ -23,6 +26,9 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/manage', manageRoutes);
 app.use('/api/product', productRoutes);
+app.use('/api/order', orderRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/sale', saleRoutes);
 
 // Catch-all route for debugging
 app.use('*', (req, res) => {

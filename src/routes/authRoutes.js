@@ -5,11 +5,12 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 router.post('/login', AuthController.login);
-router.post('/register', (req, res, next) => authMiddleware(req, res, next, 'admin'), AuthController.register);
-router.post('/remove', (req, res, next) => authMiddleware(req, res, next, 'admin'), AuthController.remove);
-router.post('/updateUser', (req, res, next) => authMiddleware(req, res, next, 'admin'), AuthController.updateUser);
+router.post('/register', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.register);
+router.post('/remove', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.remove);
+router.post('/updateUser', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.updateUser);
 router.post('/resetPassword', (req, res, next) => authMiddleware(req, res, next), AuthController.resetPassword);
 router.post('/logout', (req, res, next) => authMiddleware(req, res, next), AuthController.logout);
+
 
 // Log routes for debugging
 console.log('Registered routes:');

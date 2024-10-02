@@ -1,138 +1,139 @@
-const { pool } = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const { sequelize } = require("../config/database");
+
+class UserModel extends Model { }
+
+UserModel.init({
+    id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    username: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    password: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    email: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    accessToken: {
+        type: DataTypes.STRING(255)
+    },
+    phoneNumber: {
+        type: DataTypes.STRING(255)
+    },
+    role: {
+        type: DataTypes.STRING(255)
+    },
+    enable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    tempPassword: {
+        type: DataTypes.STRING(255)
+    }
+}, {
+    sequelize,
+    modelName: 'User',
+    tableName: 'users',
+    timestamps: true
+});
 
 class User {
     static proceedData(raw) {
         if (!raw) return;
-        delete raw['password']
-        delete raw['tempPassword']
-        delete raw['enable']
-        return {
-            ...raw,
-            // role: raw.role ? raw.role.split(',') : []
-        };
+        const { password, tempPassword, enable, ...processed } = raw.toJSON();
+        return processed;
     }
 
     static checkAuthorized(user, role) {
-        var result = user.role.includes(role);
-        return result;
+        return user.role.includes(role);
     }
 
     static async getUsers() {
-        var connection = await pool.getConnection();
         try {
-            const [rows] = await connection.query('SELECT * FROM users WHERE enable = ?', [1]);
-            return rows.map((v) => this.proceedData(v));
-
+            const users = await UserModel.findAll({ where: { enable: true } });
+            return users.map((v) => this.proceedData(v));
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
-
     }
 
     static async findByUsername(username) {
-        var connection = await pool.getConnection();
         try {
-            const [rows] = await connection.query('SELECT * FROM users WHERE username = ? AND enable = ?', [username, 1]);
-            return rows[0];
-
+            return await UserModel.findOne({ where: { username, enable: true } });
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
-
     }
 
     static async findByAccessToken(accessToken) {
-        var connection = await pool.getConnection();
         try {
-            const [rows] = await connection.query('SELECT * FROM users WHERE accessToken = ? AND enable = ?', [accessToken, 1]);
-            return this.proceedData(rows[0]);
-
+            const user = await UserModel.findOne({ where: { accessToken, enable: true } });
+            return user ? this.proceedData(user) : null;
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     static async create(username, email, password, phoneNumber, role, tempPassword) {
-        var connection = await pool.getConnection();
         try {
-            const [result] = await connection.query(
-                'INSERT INTO users (username, email, password, phoneNumber, role, tempPassword) VALUES (?, ?, ?, ?, ?, ?)',
-                [username, email, password, phoneNumber, role, tempPassword]
-            );
-
-            return result.insertId;
+            const user = await UserModel.create({
+                username, email, password, phoneNumber, role, tempPassword
+            });
+            return user.id;
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
     static async remove(userId) {
-        var connection = await pool.getConnection();
         try {
-            await connection.query(
-                'UPDATE users SET accessToken = ?, enable = ? WHERE id = ? AND enable = ?',
-                ['', 0, userId, 1]
+            await UserModel.update(
+                { accessToken: '', enable: false },
+                { where: { id: userId, enable: true } }
             );
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
     static async update(email, phoneNumber, role, id) {
-        var connection = await pool.getConnection();
         try {
-            await connection.query(
-                'UPDATE users SET email = ?, phoneNumber = ?, role = ? WHERE id = ? AND enable = ?',
-                [email, phoneNumber, role, id, 1]
+            await UserModel.update(
+                { email, phoneNumber, role },
+                { where: { id, enable: true } }
             );
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
     static async updatePassword(password, id) {
-        var connection = await pool.getConnection();
         try {
-            await connection.query(
-                'UPDATE users SET password = ?, tempPassword = ? WHERE id = ? AND enable = ?',
-                [password, null, id, 1]
+            await UserModel.update(
+                { password, tempPassword: null },
+                { where: { id, enable: true } }
             );
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
-
     static async storeAccessToken(userId, hashedToken) {
-        var connection = await pool.getConnection();
         try {
-            await connection.query(
-                'UPDATE users SET accessToken = ? WHERE id = ? AND enable = ?',
-                [hashedToken, userId, 1]
+            await UserModel.update(
+                { accessToken: hashedToken },
+                { where: { id: userId, enable: true } }
             );
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 }

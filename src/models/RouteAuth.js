@@ -1,77 +1,98 @@
-const { pool } = require("../config/database");
+const { DataTypes, Op } = require('sequelize');
+const { sequelize } = require("../config/database");
 
+const RouteAuthModel = sequelize.define('RouteAuth', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    route: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    role: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    enable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    }
+}, {
+    tableName: 'routes_auth',
+    timestamps: false
+});
 
 class RouteAuth {
     static proceedData(raw) {
         if (!raw) return;
-        delete raw['enable']
-        return {
-            ...raw,
-            // role: raw.role ? raw.role.split(',') : []
-        };
+        const { enable, ...processed } = raw.toJSON();
+        return processed;
     }
-    static async getAllowedRoutes(role) {
-        var connection = await pool.getConnection();
-        try {
-            // Fetch all records where enable = 1
-            const [result] = await connection.query(
-                'SELECT * FROM routes_auth WHERE enable = ?',
-                [1]
-            );
 
-            // Split the passed role string by commas into an array
+    static async getAllowedRoutes(role) {
+        try {
+            if (!role) return [];
+
+            const result = await RouteAuthModel.findAll({
+                where: { enable: true }
+            });
+
             const roleArray = role.split(',').map(r => r.trim().toLowerCase());
 
-            // Filter the result where item['role'] contains any value in roleArray
             const filteredRoutes = result.filter(item => {
-                // Split the role string from the database record into an array
                 const itemRoleArray = item.role.split(',').map(r => r.trim().toLowerCase());
-
-                // Check if any role in roleArray exists in itemRoleArray
                 return roleArray.some(r => itemRoleArray.includes(r));
             });
 
-            return filteredRoutes.map((v) => this.proceedData(v)); // Return the filtered records
+            return filteredRoutes.map((v) => this.proceedData(v));
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     static async getRoutesAuth() {
-        var connection = await pool.getConnection();
         try {
-            // Fetch all records where enable = 1
-            const [result] = await connection.query(
-                'SELECT * FROM routes_auth WHERE enable = ?',
-                [1]
-            );
-            return result.map((v) => this.proceedData(v)); // Return the filtered records
+            const result = await RouteAuthModel.findAll({
+                where: { enable: true }
+            });
+            return result.map((v) => this.proceedData(v));
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     static async updateRoutesAuth(routesAuth) {
-        var connection = await pool.getConnection();
         try {
             for (const route of routesAuth) {
-                // Update each route based on its ID
-                await connection.query(
-                    'UPDATE routes_auth SET role = ? WHERE id = ?',
-                    [route, route.id]
+                await RouteAuthModel.update(
+                    { role: route.role },
+                    { where: { id: route.id } }
                 );
             }
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
+    static async findMatchingRoute(routePath) {
+        try {
+            const routeAuth = await RouteAuthModel.findOne({
+                where: {
+                    [Op.or]: [
+                        { route: routePath },
+                        { route: routePath.split('/')[1] + '/*' } // Matches '/order/*' for '/order/something'
+                    ],
+                    enable: true
+                }
+            });
+
+            return routeAuth ? this.proceedData(routeAuth) : null;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = RouteAuth;

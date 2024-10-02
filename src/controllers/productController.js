@@ -13,7 +13,7 @@ class ProductController {
 
     static async updateProduct(req, res) {
         try {
-            await Product.updateProduct(req.body.id, req.body.name, req.body.image, req.body.category, req.body.description, req.body.price);
+            await Product.updateProduct(req.body.id, req.body.name, req.body.image, req.body.category, req.body.description, req.body.price, req.body.variation);
             res.json({});
         } catch (error) {
             res.status(401).json({ error: error.message });
@@ -22,15 +22,12 @@ class ProductController {
 
     static async createProduct(req, res) {
         try {
-            var id = await Product.createProduct(req.body.name, req.body.image, req.body.category, req.body.description, req.body.price, req.body.code);
+            var id = await Product.createProduct(req.body.name, req.body.image, req.body.category, req.body.description, req.body.price, req.body.variation);
             res.json({ id });
         } catch (error) {
             res.status(401).json({ error: error.message });
         }
     }
-
-
-
 
     static async removeProduct(req, res) {
         try {

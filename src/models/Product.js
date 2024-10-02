@@ -1,4 +1,5 @@
-const { pool } = require("../config/database");
+const { DataTypes, Model, Op } = require('sequelize');
+const { sequelize } = require("../config/database");
 const multer = require('multer');
 const path = require('path');
 const util = require('util');
@@ -6,10 +7,10 @@ const util = require('util');
 // Set up multer for file storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/img/product/'); // Define where to store the uploaded files
+        cb(null, 'public/img/product/');
     },
     filename: function (req, file, cb) {
-        cb(null, `${Date.now()}-${file.originalname}`); // Rename the file to avoid conflicts
+        cb(null, `${Date.now()}-${file.originalname}`);
     }
 });
 
@@ -18,144 +19,161 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5 MB size limit
 });
 
-class Product {
+class ProductModel extends Model { }
 
+ProductModel.init({
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    image: {
+        type: DataTypes.STRING
+    },
+    category: {
+        type: DataTypes.STRING
+    },
+    description: {
+        type: DataTypes.TEXT
+    },
+    price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    variation: {
+        type: DataTypes.TEXT
+    },
+    enable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    }
+}, {
+    sequelize,
+    modelName: 'Product',
+    tableName: 'products',
+    timestamps: true
+});
+
+class Product {
     static proceedData(raw) {
         if (!raw) return;
-        delete raw['enable']
-        return {
-            ...raw,
-        };
+
+        const processed = raw.toJSON();
+        delete processed.enable;
+
+        processed.price = Number(processed.price);
+
+        if (processed.variation) {
+            try {
+                processed.variation = JSON.parse(processed.variation).variation;
+                // Parse variation prices to numbers
+                processed.variation = processed.variation.map(v => ({
+                    ...v,
+                    price: Number(v.price)
+                }));
+            } catch (error) {
+                console.error('Failed to parse variation:', error);
+                processed.variation = null;
+            }
+        }
+
+        if (processed.category) {
+            processed.category = processed.category.split(', ').map((category) => category.trim());
+        }
+
+        if (processed.image) {
+            processed.image = processed.image.split(', ').map((image) => image.trim());
+        }
+
+        return processed;
     }
 
     static async getProducts(searchTerm, page, categoryFilter) {
-        const connection = await pool.getConnection();
         try {
-            // Set the number of items per page for pagination
             const itemsPerPage = 20;
             const offset = (page - 1) * itemsPerPage;
 
-            // Construct the base query
-            let query = `
-            SELECT * FROM products
-            WHERE enable = ?
-              AND name LIKE ?
-          `;
+            const whereClause = {
+                enable: true,
+                name: {
+                    [Op.like]: `%${searchTerm}%`
+                }
+            };
 
-            // Add category filter if provided
             if (categoryFilter) {
-                query += ` AND (
-              category = ? OR
-              category LIKE ? OR
-              category LIKE ? OR
-              category LIKE ?
-            )`;
+                whereClause.category = {
+                    [Op.or]: [
+                        categoryFilter,
+                        { [Op.like]: `${categoryFilter}, %` },
+                        { [Op.like]: `%, ${categoryFilter}, %` },
+                        { [Op.like]: `%, ${categoryFilter}` }
+                    ]
+                };
             }
 
-            // Add pagination
-            query += ` LIMIT ? OFFSET ?`;
+            const products = await ProductModel.findAll({
+                where: whereClause,
+                limit: itemsPerPage,
+                offset: offset
+            });
 
-            // Prepare query parameters
-            const queryParams = [1, `%${searchTerm}%`];
-            if (categoryFilter) {
-                queryParams.push(
-                    categoryFilter,
-                    `${categoryFilter},%`,
-                    `%, ${categoryFilter},%`,
-                    `%, ${categoryFilter}`
-                );
-            }
-            queryParams.push(itemsPerPage, offset);
-
-            // Execute the query
-            const [result] = await connection.query(query, queryParams);
-
-            // Return the filtered and paginated records
-            return result.map((v) => this.proceedData(v));
+            return products.map((v) => this.proceedData(v));
         } catch (error) {
-            // Handle error
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
-    // static async getProducts(searchTerm, page) {
-    //     const connection = await pool.getConnection();
-
-    //     try {
-    //         // Set the number of items per page for pagination
-    //         const itemsPerPage = 20;
-    //         const offset = (page - 1) * itemsPerPage;
-
-    //         // Fetch records where enable = 1 and filter by product name (if searchTerm is provided)
-    //         const [result] = await connection.query(
-    //             `SELECT * FROM products 
-    //              WHERE enable = ? AND name LIKE ?
-    //              LIMIT ? OFFSET ?`,
-    //             [1, `%${searchTerm}%`, itemsPerPage, offset]
-    //         );
-
-    //         return result.map((v) => this.proceedData(v)); // Return the filtered and paginated records
-    //     } catch (error) {
-    //         // Handle error
-    //         throw error;
-    //     } finally {
-    //         connection.release();
-    //     }
-    // }
-
-    static async createProduct(name, image, category, description, price) {
-        var connection = await pool.getConnection();
+    static async createProduct(name, image, category, description, price, variation) {
         try {
-            const [result] = await connection.query(
-                'INSERT INTO products (name, image, category, description, price) VALUES (?, ?, ?, ?, ?)',
-                [name, image, category, description, price]
-            );
-            return result.insertId;
+            const product = await ProductModel.create({
+                name,
+                image: image.join(', '),
+                category: category.join(', '),
+                description,
+                price: Number(price),
+                variation: JSON.stringify({ 'variation': variation.map(v => ({ ...v, price: Number(v.price) })) })
+            });
+            return product.id;
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
-    static async updateProduct(id, name, image, category, description, price) {
-        var connection = await pool.getConnection();
+    static async updateProduct(id, name, image, category, description, price, variation) {
         try {
-            await connection.query(
-                'UPDATE products SET name = ?, image = ?, category = ?, description = ?, price = ? WHERE id = ? AND enable = ?',
-                [name, image, category, description, price, id, 1]
-            );
+            await ProductModel.update({
+                name,
+                image: image.join(', '),
+                category: category.join(', '),
+                description,
+                price: Number(price),
+                variation: JSON.stringify({ 'variation': variation.map(v => ({ ...v, price: Number(v.price) })) })
+            }, {
+                where: { id, enable: true }
+            });
         } catch (error) {
             throw error;
-
-        } finally {
-            connection.release();
         }
     }
 
     static async removeProduct(id) {
-        const connection = await pool.getConnection();
         try {
-            await connection.query(
-                'UPDATE products SET enable = ? WHERE id = ?',
-                [0, id] // Set status to 0
-            );
+            await ProductModel.update({ enable: false }, {
+                where: { id }
+            });
         } catch (error) {
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     static async uploadProductImg(req, res) {
-        // Wrap multer upload handler in a promise
         const uploadFile = util.promisify(upload.single('upload-image'));
 
         try {
-            // Await the upload process
             await uploadFile(req, res);
 
             if (!req.file) {
@@ -163,11 +181,9 @@ class Product {
             }
             const filePath = req.file.path;
             const fileName = filePath.split('/').pop();
-            // Respond with the file path or other relevant information
             return fileName;
         } catch (error) {
             throw error;
-            // return res.status(500).json({ error: 'Server error' });
         }
     }
 }
