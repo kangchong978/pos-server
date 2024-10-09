@@ -37,6 +37,20 @@ SaleModel.init({
 });
 
 class Sale {
+    static proceedData(raw) {
+        if (!raw) return null;
+        const processed = raw.toJSON();
+        delete processed.enable;
+
+        processed.total_amount = Number(processed.total_amount);
+        processed.tax_amount = Number(processed.tax_amount);
+
+        processed.createdAt = new Date(processed.createdAt);
+        processed.updatedAt = new Date(processed.updatedAt);
+
+        return processed;
+    }
+
     static async recordSale(orderId, totalAmount, taxAmount, paymentMethod) {
         try {
             await SaleModel.create({
@@ -50,112 +64,35 @@ class Sale {
         }
     }
 
-    static async getTotalSales(startDate, endDate) {
+    static async getSales(filters = {}) {
         try {
-            const result = await SaleModel.sum('total_amount', {
-                where: {
-                    transaction_date: {
-                        [Op.between]: [startDate, endDate]
-                    }
-                }
+            const whereClause = { enable: true };
+
+            if (filters.status) {
+                whereClause.status = filters.status;
+            }
+
+            if (filters.id) {
+                whereClause.id = filters.id;
+            }
+
+            const sales = await SaleModel.findAll({
+                where: whereClause,
+                order: [['updatedAt', 'DESC']]
             });
-            return result || 0;
+
+            return sales.map((v) => this.proceedData(v));
         } catch (error) {
             throw error;
         }
     }
 
-    static async getAverageTransactionValue(startDate, endDate) {
+    static async getSaleById(id) {
         try {
-            const result = await SaleModel.findOne({
-                attributes: [[sequelize.fn('AVG', sequelize.col('total_amount')), 'averageTransactionValue']],
-                where: {
-                    transaction_date: {
-                        [Op.between]: [startDate, endDate]
-                    }
-                }
+            const sale = await SaleModel.findOne({
+                where: { id, enable: true }
             });
-            return result.getDataValue('averageTransactionValue') || 0;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async getSalesByCategory(startDate, endDate) {
-        try {
-            const result = await sequelize.query(`
-                SELECT p.category, SUM(o.total_amount) as totalSales
-                FROM sales s
-                JOIN orders o ON s.order_id = o.id
-                JOIN order_items oi ON o.id = oi.order_id
-                JOIN products p ON oi.product_id = p.id
-                WHERE s.transaction_date BETWEEN :startDate AND :endDate
-                GROUP BY p.category
-            `, {
-                replacements: { startDate, endDate },
-                type: sequelize.QueryTypes.SELECT
-            });
-            return result;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async getSalesByPaymentMethod(startDate, endDate) {
-        try {
-            const result = await SaleModel.findAll({
-                attributes: [
-                    'payment_method',
-                    [sequelize.fn('SUM', sequelize.col('total_amount')), 'totalSales']
-                ],
-                where: {
-                    transaction_date: {
-                        [Op.between]: [startDate, endDate]
-                    }
-                },
-                group: ['payment_method']
-            });
-            return result;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async getSalesByTime(startDate, endDate) {
-        try {
-            const result = await sequelize.query(`
-                SELECT DATE_FORMAT(transaction_date, '%H:00') as hour, SUM(total_amount) as totalSales
-                FROM sales
-                WHERE transaction_date BETWEEN :startDate AND :endDate
-                GROUP BY hour
-                ORDER BY hour
-            `, {
-                replacements: { startDate, endDate },
-                type: sequelize.QueryTypes.SELECT
-            });
-            return result;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async getTopSellingProducts(startDate, endDate, limit = 10) {
-        try {
-            const result = await sequelize.query(`
-                SELECT p.name, SUM(oi.quantity) as totalQuantity, SUM(oi.price * oi.quantity) as totalSales
-                FROM sales s
-                JOIN orders o ON s.order_id = o.id
-                JOIN order_items oi ON o.id = oi.order_id
-                JOIN products p ON oi.product_id = p.id
-                WHERE s.transaction_date BETWEEN :startDate AND :endDate
-                GROUP BY p.id
-                ORDER BY totalQuantity DESC
-                LIMIT :limit
-            `, {
-                replacements: { startDate, endDate, limit: parseInt(limit) },
-                type: sequelize.QueryTypes.SELECT
-            });
-            return result;
+            return sale ? this.proceedData(sale) : null;
         } catch (error) {
             throw error;
         }

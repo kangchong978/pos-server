@@ -90,7 +90,7 @@ class OrderController {
             res.status(401).json({ error: error.message });
         }
     }
-    static async generateReceipt(req, res) {
+    static async generateOrderList(req, res) {
         try {
             const orderId = req.params.id;
             const order = await Order.getOrderById(orderId);
@@ -102,7 +102,7 @@ class OrderController {
             // Fetch company information
             const companyInfo = await Setting.getSettings();
 
-            const receiptPath = await ReceiptGenerator.generateReceipt(order, companyInfo);
+            const receiptPath = await ReceiptGenerator.generateOrderList(order, companyInfo);
 
             // Send the file
             res.download(receiptPath, `receipt-${orderId}.pdf`, (err) => {

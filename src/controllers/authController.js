@@ -5,12 +5,13 @@ class AuthController {
     static async login(req, res) {
         try {
             const { username, password } = req.body;
-            const { updatePasswordRequired, accessibleRoute } = await AuthService.login(username, password);
+            const { updatePasswordRequired, accessibleRoute, doneFeedbackToday } = await AuthService.login(username, password);
+
             /* new access Token was stored */
             const userInfo = await User.findByUsername(username);
 
             /* remove the password from object */
-            res.status(201).json({ ...User.proceedData(userInfo), updatePasswordRequired, accessibleRoute });
+            res.status(201).json({ ...User.proceedData(userInfo), updatePasswordRequired, accessibleRoute, doneFeedbackToday });
         } catch (error) {
             res.status(401).json({ error: error.message });
         }

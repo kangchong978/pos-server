@@ -7,12 +7,8 @@ const router = express.Router();
 
 // New sales routes
 router.post('/recordSale', (req, res, next) => authMiddleware(req, res, next, '/pos'), SalesController.recordSale);
-router.get('/totalSales', (req, res, next) => authMiddleware(req, res, next), SalesController.getTotalSales);
-router.get('/averageTransactionValue', (req, res, next) => authMiddleware(req, res, next), SalesController.getAverageTransactionValue);
-router.get('/salesByCategory', (req, res, next) => authMiddleware(req, res, next), SalesController.getSalesByCategory);
-router.get('/salesByPaymentMethod', (req, res, next) => authMiddleware(req, res, next), SalesController.getSalesByPaymentMethod);
-router.get('/salesByTime', (req, res, next) => authMiddleware(req, res, next), SalesController.getSalesByTime);
-router.get('/topSellingProducts', (req, res, next) => authMiddleware(req, res, next), SalesController.getTopSellingProducts);
+router.get('/getSales', (req, res, next) => authMiddleware(req, res, next), SalesController.getSales);
+router.get('/receipt/:id', (req, res, next) => authMiddleware(req, res, next), SalesController.generateReceipt);
 
 // Log routes for debugging
 console.log('Registered routes:');

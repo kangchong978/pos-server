@@ -1,10 +1,12 @@
+const Order = require("../models/Order");
 const Sale = require("../models/Sale");
-
+const Setting = require("../models/Setting");
+const ReceiptGenerator = require("../utils/receiptGenerator");
+const fs = require('fs');
 
 class SalesController {
     static async recordSale(req, res) {
         try {
-
             await Sale.recordSale(req.body.orderId, req.body.totalAmount, req.body.taxAmount, req.body.paymentMethod);
             res.json({ message: 'Sale recorded successfully' });
         } catch (error) {
@@ -12,63 +14,54 @@ class SalesController {
         }
     }
 
-    static async getTotalSales(req, res) {
+    static async getSales(req, res) {
         try {
-            const { startDate, endDate } = req.query;
-            const totalSales = await Sale.getTotalSales(startDate, endDate);
-            res.json({ totalSales });
+            const filters = {
+                status: req.query.status,
+                id: req.query.id
+            };
+            const sales = await Sale.getSales(filters);
+            res.json({ sales });
         } catch (error) {
             res.status(401).json({ error: error.message });
         }
     }
 
-    static async getAverageTransactionValue(req, res) {
+    static async generateReceipt(req, res) {
         try {
-            const { startDate, endDate } = req.query;
-            const averageTransactionValue = await Sale.getAverageTransactionValue(startDate, endDate);
-            res.json({ averageTransactionValue });
-        } catch (error) {
-            res.status(401).json({ error: error.message });
-        }
-    }
+            const saleId = req.params.id;
 
-    static async getSalesByCategory(req, res) {
-        try {
-            const { startDate, endDate } = req.query;
-            const salesByCategory = await Sale.getSalesByCategory(startDate, endDate);
-            res.json({ salesByCategory });
-        } catch (error) {
-            res.status(401).json({ error: error.message });
-        }
-    }
+            const sale = await Sale.getSaleById(saleId);
 
-    static async getSalesByPaymentMethod(req, res) {
-        try {
-            const { startDate, endDate } = req.query;
-            const salesByPaymentMethod = await Sale.getSalesByPaymentMethod(startDate, endDate);
-            res.json({ salesByPaymentMethod });
-        } catch (error) {
-            res.status(401).json({ error: error.message });
-        }
-    }
+            const orderId = sale.order_id;
 
-    static async getSalesByTime(req, res) {
-        try {
-            const { startDate, endDate } = req.query;
-            const salesByTime = await Sale.getSalesByTime(startDate, endDate);
-            res.json({ salesByTime });
-        } catch (error) {
-            res.status(401).json({ error: error.message });
-        }
-    }
 
-    static async getTopSellingProducts(req, res) {
-        try {
-            const { startDate, endDate, limit } = req.query;
-            const topSellingProducts = await Sale.getTopSellingProducts(startDate, endDate, limit);
-            res.json({ topSellingProducts });
+            const order = await Order.getOrderById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            // Fetch company information
+            const companyInfo = await Setting.getSettings();
+
+            const receiptPath = await ReceiptGenerator.generateReceipt(order, companyInfo);
+
+            // Send the file
+            res.download(receiptPath, `receipt-${orderId}.pdf`, (err) => {
+                if (err) {
+                    res.status(500).json({ error: 'Error downloading the file' });
+                }
+
+                // Delete the file after sending
+                fs.unlink(receiptPath, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.error('Error deleting the file:', unlinkErr);
+                    }
+                });
+            });
         } catch (error) {
-            res.status(401).json({ error: error.message });
+            res.status(500).json({ error: error.message });
         }
     }
 }

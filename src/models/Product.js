@@ -83,18 +83,21 @@ class Product {
 
         if (processed.category) {
             processed.category = processed.category.split(', ').map((category) => category.trim());
+        } else {
+            processed.category = [];
         }
 
         if (processed.image) {
             processed.image = processed.image.split(', ').map((image) => image.trim());
+        } else {
+            processed.image = [];
         }
 
         return processed;
     }
 
-    static async getProducts(searchTerm, page, categoryFilter) {
+    static async getProducts(searchTerm, page, categoryFilter, itemsPerPage) {
         try {
-            const itemsPerPage = 20;
             const offset = (page - 1) * itemsPerPage;
 
             const whereClause = {
@@ -115,13 +118,22 @@ class Product {
                 };
             }
 
+            // Get paginated products
             const products = await ProductModel.findAll({
                 where: whereClause,
                 limit: itemsPerPage,
                 offset: offset
             });
 
-            return products.map((v) => this.proceedData(v));
+            // Get total count of products matching the criteria
+            const totalCount = await ProductModel.count({
+                where: whereClause
+            });
+
+            return {
+                products: products.map((v) => this.proceedData(v)),
+                total: totalCount
+            };
         } catch (error) {
             throw error;
         }

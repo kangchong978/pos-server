@@ -54,6 +54,9 @@ SettingModel.init({
     receipt_footer_text: {
         type: DataTypes.TEXT
     },
+    theme: {
+        type: DataTypes.STRING(20)
+    },
     createdAt: {
         type: DataTypes.DATE,
         allowNull: false,

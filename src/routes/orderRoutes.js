@@ -14,7 +14,7 @@ router.post('/removeTable', (req, res, next) => authMiddleware(req, res, next, '
 router.post('/createOrder', (req, res, next) => authMiddleware(req, res, next, '/pos'), OrderController.createOrder);
 router.post('/updateOrder', (req, res, next) => authMiddleware(req, res, next, '/pos'), OrderController.updateOrder);
 router.post('/updateOrderStatus', (req, res, next) => authMiddleware(req, res, next, '/pos'), OrderController.updateOrderStatus);
-router.get('/receipt/:id', (req, res, next) => authMiddleware(req, res, next), OrderController.generateReceipt);
+router.get('/orderList/:id', (req, res, next) => authMiddleware(req, res, next), OrderController.generateOrderList);
 
 // Log routes for debugging
 console.log('Registered routes:');

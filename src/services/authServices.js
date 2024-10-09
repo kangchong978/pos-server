@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const crypto = require('crypto'); // Import crypto for hashing
 const RouteAuth = require('../models/RouteAuth');
+const EmployeeFeedback = require('../models/EmployeeFeedback');
 
 class AuthService {
     static async login(username, password) {
@@ -40,7 +41,9 @@ class AuthService {
 
         const accessibleRoute = await RouteAuth.getAllowedRoutes(user.role);
 
-        return { accessToken, updatePasswordRequired, accessibleRoute }; // Return the plain access token to the user
+        const doneFeedbackToday = await EmployeeFeedback.canSubmitFeedbackToday(user.id);
+
+        return { accessToken, updatePasswordRequired, accessibleRoute, doneFeedbackToday }; // Return the plain access token to the user
     }
 
     static async register(data) {
@@ -51,7 +54,7 @@ class AuthService {
 
         // const hashedPassword = await bcrypt.hash(data.password, 10);
         const tempPassword = Math.random().toString(36).substring(2, 8); // Generate a random 6-character string
-        const id = await User.create(data.username, data.email, '', data.phoneNumber, data.role, tempPassword);
+        const id = await User.create(data.username, data.email, '', data.phoneNumber, data.role, tempPassword, data.dob, data.gender, data.address);
         return { id, tempPassword };
     }
 
@@ -61,7 +64,7 @@ class AuthService {
     }
 
     static async updateUser(data) {
-        const userId = await User.update(data.email, data.phoneNumber, data.role, data.id);
+        const userId = await User.update(data.email, data.phoneNumber, data.role, data.id, data.dob, data.gender, data.address);
         return userId;
     }
 

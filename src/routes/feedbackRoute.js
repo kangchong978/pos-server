@@ -1,11 +1,13 @@
 const express = require('express');
 const AuthController = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const DashboardController = require('../controllers/dashboardController');
+const FeedbackController = require('../controllers/feedbackController');
 
 const router = express.Router();
 
-router.post('/getDashboardStats', (req, res, next) => authMiddleware(req, res, next, '/dashboard'), DashboardController.getDashboardStats);
+router.post('/recordEmployeeFeedback', (req, res, next) => authMiddleware(req, res, next), FeedbackController.recordEmployeeFeedback);
+router.get('/getEmployeeFeedbacks', FeedbackController.getEmployeeFeedbacks);
+
 
 // Log routes for debugging
 console.log('Registered routes:');

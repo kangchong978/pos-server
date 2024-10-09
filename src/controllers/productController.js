@@ -4,8 +4,8 @@ const RouteAuth = require("../models/RouteAuth");
 class ProductController {
     static async getProducts(req, res) {
         try {
-            const products = await Product.getProducts(req.body.searchTerm, req.body.page, req.body.categoryFilter);
-            res.json({ products });
+            const { products, total } = await Product.getProducts(req.body.searchTerm, req.body.page, req.body.categoryFilter, req.body.itemsPerPage);
+            res.json({ products, total });
         } catch (error) {
             res.status(401).json({ error: error.message });
         }

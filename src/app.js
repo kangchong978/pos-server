@@ -6,6 +6,7 @@ const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const saleRoutes = require('./routes/saleRoutes');
+const feedbackRoutes = require('./routes/feedbackRoute');
 const cors = require('cors');
 const { initializeDatabase } = require('./config/database');
 
@@ -29,6 +30,7 @@ app.use('/api/product', productRoutes);
 app.use('/api/order', orderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sale', saleRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Catch-all route for debugging
 app.use('*', (req, res) => {

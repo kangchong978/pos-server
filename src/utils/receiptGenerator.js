@@ -3,6 +3,81 @@ const fs = require('fs');
 const path = require('path');
 
 class ReceiptGenerator {
+    static async generateOrderList(order, companyInfo) {
+        return new Promise((resolve, reject) => {
+            const width = 226.8; // 80mm in points
+            const margin = 10;
+            const contentWidth = width - 2 * margin;
+
+            const doc = new PDFDocument({
+                size: [width, 1000],
+                margin: margin,
+                autoFirstPage: false
+            });
+
+            const filename = `order-list-${order.id}.pdf`;
+            const stream = fs.createWriteStream(filename);
+            doc.pipe(stream);
+
+            let y = margin;
+
+            doc.addPage({ size: [width, 1000], margin: margin });
+
+            // Order List title
+            doc.fontSize(12).font('Helvetica-Bold');
+            y = this.addTextRow(doc, '*Order List', y, margin, contentWidth, 'center');
+            doc.moveTo(margin, y).lineTo(width - margin, y).stroke();
+            y += 5;
+
+            // Order details
+            doc.fontSize(8).font('Helvetica');
+            y = this.addTextRow(doc, `R. No.: ${order.id}`, y, margin, contentWidth);
+            y = this.addTextRow(doc, `Date: ${new Date(order.updatedAt).toLocaleString()}`, y, margin, contentWidth);
+            // y = this.addTextRow(doc, `Transaction by: ${order.transactionBy || 'Admin'}`, y, margin, contentWidth);
+            // y = this.addTextRow(doc, `Table: ${order.tableId || 'N/A'}`, y, margin, contentWidth);
+            y = this.addTextRow(doc, 'No Description', y, margin, contentWidth);
+            y += 5;
+
+            // Products
+            doc.fontSize(8).font('Helvetica');
+            order.products.forEach((item, index) => {
+                const productY = y;
+                y = this.addTextRow(doc, `${item.quantity} ${item.name}`, y, margin, contentWidth - 20); // Leave space for checkbox
+
+                // Add variations if any
+                if (item.variation && item.variation.length > 0) {
+                    item.variation.forEach(v => {
+                        doc.fontSize(7).font('Helvetica-Oblique');
+                        y = this.addTextRow(doc, `  *${v.name}`, y, margin, contentWidth - 20);
+                    });
+                    doc.fontSize(8).font('Helvetica');
+                }
+
+                // Add checkbox
+                this.drawCheckbox(doc, width - margin - 15, productY);
+
+                y += 2; // Add a small space after each item
+            });
+
+            // Trim the page to the actual content height
+            const pageHeight = y + margin;
+            doc.page.size = [width, pageHeight];
+
+            doc.end();
+
+            stream.on('finish', () => {
+                resolve(filename);
+            });
+
+            stream.on('error', (error) => {
+                reject(error);
+            });
+        });
+    }
+
+    static drawCheckbox(doc, x, y) {
+        doc.rect(x, y, 10, 10).stroke();
+    }
     static async generateReceipt(order, companyInfo) {
         return new Promise((resolve, reject) => {
             const width = 226.8; // 80mm in points

@@ -37,6 +37,18 @@ UserModel.init({
     },
     tempPassword: {
         type: DataTypes.STRING(255)
+    },
+    dob: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
+    gender: {
+        type: DataTypes.ENUM('male', 'female', 'other'),
+        allowNull: true
+    },
+    address: {
+        type: DataTypes.STRING(500),
+        allowNull: true
     }
 }, {
     sequelize,
@@ -82,10 +94,10 @@ class User {
         }
     }
 
-    static async create(username, email, password, phoneNumber, role, tempPassword) {
+    static async create(username, email, password, phoneNumber, role, tempPassword, dob, gender, address) {
         try {
             const user = await UserModel.create({
-                username, email, password, phoneNumber, role, tempPassword
+                username, email, password, phoneNumber, role, tempPassword, dob, gender, address
             });
             return user.id;
         } catch (error) {
@@ -104,10 +116,10 @@ class User {
         }
     }
 
-    static async update(email, phoneNumber, role, id) {
+    static async update(email, phoneNumber, role, id, dob, gender, address) {
         try {
             await UserModel.update(
-                { email, phoneNumber, role },
+                { email, phoneNumber, role, dob, gender, address },
                 { where: { id, enable: true } }
             );
         } catch (error) {
