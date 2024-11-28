@@ -53,7 +53,7 @@ class Sale {
 
     static async recordSale(orderId, totalAmount, taxAmount, paymentMethod) {
         try {
-            await SaleModel.create({
+            return await SaleModel.create({
                 order_id: orderId,
                 total_amount: totalAmount,
                 tax_amount: taxAmount,

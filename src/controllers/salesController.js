@@ -7,8 +7,8 @@ const fs = require('fs');
 class SalesController {
     static async recordSale(req, res) {
         try {
-            await Sale.recordSale(req.body.orderId, req.body.totalAmount, req.body.taxAmount, req.body.paymentMethod);
-            res.json({ message: 'Sale recorded successfully' });
+            const props = await Sale.recordSale(req.body.orderId, req.body.totalAmount, req.body.taxAmount, req.body.paymentMethod);
+            res.json(props);
         } catch (error) {
             res.status(401).json({ error: error.message });
         }
