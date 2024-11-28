@@ -22,20 +22,21 @@ module.exports = {
       },
       password: {
         type: Sequelize.STRING(255),
-        allowNull: false
+        allowNull: true
       },
       email: {
         type: Sequelize.STRING(255),
         allowNull: false
-      },
-      accessToken: {
-        type: Sequelize.STRING(255)
       },
       phoneNumber: {
         type: Sequelize.STRING(255)
       },
       role: {
         type: Sequelize.STRING(255)
+      },
+      refresh_token_ver: {
+        type: Sequelize.STRING(255),
+        allowNull: true
       },
       enable: {
         type: Sequelize.BOOLEAN,

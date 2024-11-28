@@ -1,49 +1,58 @@
 const User = require('../models/User');
 const RouteAuth = require('../models/RouteAuth');
+const { verifyAccessToken, verifyRefreshToken } = require('../services/jwtServices');
 
-async function authMiddleware(req, res, next, routePath) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'No token provided' });
+
+async function authMiddleware(req, res, next, routePath, ignoreVer = false, isRefreshToken = false) {
+
+    if (isRefreshToken) {
+        const token = req.body.refreshToken;
+        try {
+            var { userId, refresh_token_ver } = verifyRefreshToken(token);
+            var user = await User.findById(userId);
+            if (user.refresh_token_ver != refresh_token_ver) {
+                return res.sendStatus(401);
+            }
+
+            next();
+        } catch (error) {
+            if ((error || error.message) == 'invalid token') return res.sendStatus(401);
+            if ((error || error.message) == 'jwt expired') return res.sendStatus(401);
+            return res.status(500).json({ error: error });
+        }
+        return;
     }
 
-    const [, accessToken] = authHeader.split(' ');
+    const authHeader = req.headers.authorization;
+
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.sendStatus(401);
 
     try {
-        const user = await User.findByAccessToken(accessToken);
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
+        var { accessibleRoute, userId, refresh_token_ver } = verifyAccessToken(token);
+        if (!accessibleRoute) throw 'Unknown Error';
 
-        // Set userId in the request object
-        req.userId = user.id;
+        var user = await User.findById(userId);
 
-        // If routePath is provided, check for route-specific authorization
+        /* only skip this, if the jwt token expired wont passed here, this only handle the logout case */
+        if (!ignoreVer && user.refresh_token_ver != refresh_token_ver) throw 'jwt expired';
+
         if (routePath) {
-            // Get user roles (assuming user.role is an array or comma-separated string)
-            const userRoles = Array.isArray(user.role) ? user.role : user.role.split(',');
+            const isAuthorized = accessibleRoute.some(routeAuth => routeAuth.route == routePath);
 
-            // Check route authorization
-            const routeAuth = await RouteAuth.findMatchingRoute(routePath);
-            if (routeAuth) {
-                const allowedRoles = routeAuth.role.split(',').map((e) => e.trim());
-                const isAuthorized = userRoles.some(role =>
-                    allowedRoles.includes(role.trim().toLowerCase())
-                );
-
-                if (!isAuthorized) {
-                    return res.status(403).json({ error: 'Unauthorized access' });
-                }
+            if (!isAuthorized) {
+                return res.status(403).json({ error: 'Unauthorized access' });
             }
-            // If routeAuth is not found, we still continue as the token is valid
         }
 
-        // If we've reached here, either the route doesn't require specific authorization,
-        // or the user is authorized for the specific route
+        req.userId = userId;
         next();
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        if ((error == 'invalid token') || (error.message == 'invalid token')) return res.sendStatus(401);
+        if ((error == 'jwt expired') || (error.message == 'jwt expired')) return res.sendStatus(401);
+        return res.status(500).json({ error: error });
     }
 }
+
 
 module.exports = authMiddleware;

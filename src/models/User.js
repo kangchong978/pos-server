@@ -16,14 +16,15 @@ UserModel.init({
     },
     password: {
         type: DataTypes.STRING(255),
-        allowNull: false
+        allowNull: true
     },
     email: {
         type: DataTypes.STRING(255),
         allowNull: false
     },
-    accessToken: {
-        type: DataTypes.STRING(255)
+    refresh_token_ver: {
+        type: DataTypes.STRING(255),
+        allowNull: true
     },
     phoneNumber: {
         type: DataTypes.STRING(255)
@@ -64,14 +65,18 @@ class User {
         return processed;
     }
 
-    static checkAuthorized(user, role) {
-        return user.role.includes(role);
-    }
 
     static async getUsers() {
         try {
             const users = await UserModel.findAll({ where: { enable: true } });
             return users.map((v) => this.proceedData(v));
+        } catch (error) {
+            throw error;
+        }
+    }
+    static async findById(id) {
+        try {
+            return await UserModel.findOne({ where: { id, enable: true } });
         } catch (error) {
             throw error;
         }
@@ -85,20 +90,10 @@ class User {
         }
     }
 
-    static async findByAccessToken(accessToken) {
-        try {
-            const user = await UserModel.findOne({ where: { accessToken, enable: true } });
-            return user ? this.proceedData(user) : null;
-        } catch (error) {
-            throw error;
-        }
-    }
 
-    static async create(username, email, password, phoneNumber, role, tempPassword, dob, gender, address) {
+    static async create(data) {
         try {
-            const user = await UserModel.create({
-                username, email, password, phoneNumber, role, tempPassword, dob, gender, address
-            });
+            const user = await UserModel.create(data);
             return user.id;
         } catch (error) {
             throw error;
@@ -127,6 +122,19 @@ class User {
         }
     }
 
+
+    static async updateTempPassword(tempPassword, id) {
+        try {
+            await UserModel.update(
+                { tempPassword, password: null, refresh_token_ver: null },
+                { where: { id, enable: true } }
+            );
+        } catch (error) {
+            throw error;
+        }
+    }
+
+
     static async updatePassword(password, id) {
         try {
             await UserModel.update(
@@ -138,10 +146,10 @@ class User {
         }
     }
 
-    static async storeAccessToken(userId, hashedToken) {
+    static async updateRefreshTokenVer(userId, refresh_token_ver) {
         try {
             await UserModel.update(
-                { accessToken: hashedToken },
+                { 'refresh_token_ver': refresh_token_ver },
                 { where: { id: userId, enable: true } }
             );
         } catch (error) {

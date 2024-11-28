@@ -72,9 +72,14 @@ class Sale {
                 whereClause.status = filters.status;
             }
 
-            if (filters.id) {
-                whereClause.id = filters.id;
+            if (filters.order_id) {
+                whereClause.order_id = filters.order_id;
             }
+
+            if (filters.payment_method) {
+                whereClause.payment_method = filters.payment_method;
+            }
+
 
             const sales = await SaleModel.findAll({
                 where: whereClause,

@@ -18,7 +18,8 @@ class SalesController {
         try {
             const filters = {
                 status: req.query.status,
-                id: req.query.id
+                order_id: req.query.order_id,
+                payment_method: req.query.payment_method
             };
             const sales = await Sale.getSales(filters);
             res.json({ sales });

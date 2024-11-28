@@ -165,3 +165,8 @@ If you encounter issues:
 4. Use the `--debug` flag with Sequelize commands for more detailed output.
 
 For more information, refer to the [Sequelize documentation](https://sequelize.org/master/manual/migrations.html).
+
+
+# JWT implementation
+
+1. run 'require('crypto').randomBytes(64).toString('hex')' in node execution to generate keys

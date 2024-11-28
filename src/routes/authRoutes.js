@@ -5,11 +5,14 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 router.post('/login', AuthController.login);
-router.post('/register', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.register);
-router.post('/remove', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.remove);
-router.post('/updateUser', (req, res, next) => authMiddleware(req, res, next, '/employee'), AuthController.updateUser);
+router.post('/register', (req, res, next) => authMiddleware(req, res, next, '/employees'), AuthController.register);
+router.post('/remove', (req, res, next) => authMiddleware(req, res, next, '/employees'), AuthController.remove);
+router.post('/updateUser', (req, res, next) => authMiddleware(req, res, next, '/employees'), AuthController.updateUser);
 router.post('/resetPassword', (req, res, next) => authMiddleware(req, res, next), AuthController.resetPassword);
-router.post('/logout', (req, res, next) => authMiddleware(req, res, next), AuthController.logout);
+router.post('/requestResetPassword', (req, res, next) => authMiddleware(req, res, next), AuthController.requestResetPassword);
+router.post('/logout', (req, res, next) => authMiddleware(req, res, next, undefined, true), AuthController.logout);
+router.post('/refreshAccessToken', (req, res, next) => authMiddleware(req, res, next, undefined, undefined, true), AuthController.refreshAccessToken);
+router.get('/loadUserInfo', (req, res, next) => authMiddleware(req, res, next), AuthController.loadUserInfo);
 
 
 // Log routes for debugging

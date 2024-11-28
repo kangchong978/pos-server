@@ -2,16 +2,14 @@ const User = require('../models/User');
 const AuthService = require('../services/authServices');
 
 class AuthController {
+
+
     static async login(req, res) {
         try {
             const { username, password } = req.body;
-            const { updatePasswordRequired, accessibleRoute, doneFeedbackToday } = await AuthService.login(username, password);
+            const props = await AuthService.login(username, password);
 
-            /* new access Token was stored */
-            const userInfo = await User.findByUsername(username);
-
-            /* remove the password from object */
-            res.status(201).json({ ...User.proceedData(userInfo), updatePasswordRequired, accessibleRoute, doneFeedbackToday });
+            res.status(201).json(props);
         } catch (error) {
             res.status(401).json({ error: error.message });
         }
@@ -19,9 +17,8 @@ class AuthController {
 
     static async register(req, res) {
         try {
-
-            const { id, tempPassword } = await AuthService.register(req.body);
-            res.status(201).json({ id, tempPassword });
+            const props = await AuthService.register(req.body);
+            res.status(201).json(props);
         } catch (error) {
             res.status(400).json({ error: error.message });
         }
@@ -36,11 +33,31 @@ class AuthController {
         }
     }
 
+    static async loadUserInfo(req, res) {
+        try {
+            const userId = req.userId;
+            const props = await AuthService.loadUserInfo(userId);
+            res.status(201).json(props);
+        } catch (error) {
+            res.status(401).json({ error: error.message });
+        }
+    }
+
+
 
     static async updateUser(req, res) {
         try {
             await AuthService.updateUser(req.body);
             res.status(201).json(true);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async requestResetPassword(req, res) {
+        try {
+            const props = await AuthService.requestResetPassword(req.body.id);
+            res.status(201).json(props);
         } catch (error) {
             res.status(400).json({ error: error.message });
         }
@@ -57,15 +74,19 @@ class AuthController {
 
     static async logout(req, res) {
         try {
-            const authHeader = req.headers.authorization;
-            if (!authHeader) {
-                return res.status(401).json({ error: 'No token provided' });
-            }
+            await AuthService.logout(req.userId);
 
-            const [, accessToken] = authHeader.split(' ');
-
-            await AuthService.removeAccessToken(accessToken);
             res.status(201).json({ 'message': 'succeed' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async refreshAccessToken(req, res) {
+        try {
+            var accessToken = await AuthService.refreshAccessToken(req.body.refreshToken);
+
+            res.status(201).json(accessToken);
         } catch (error) {
             res.status(400).json({ error: error.message });
         }

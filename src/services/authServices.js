@@ -1,10 +1,20 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const crypto = require('crypto'); // Import crypto for hashing
 const RouteAuth = require('../models/RouteAuth');
 const EmployeeFeedback = require('../models/EmployeeFeedback');
+const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('./jwtServices');
+
 
 class AuthService {
+
+    static async loadUserInfo(id) {
+        const user = await User.findById(id);
+        const accessibleRoute = await RouteAuth.getAllowedRoutes(user.role);
+        const doneFeedbackToday = await EmployeeFeedback.canSubmitFeedbackToday(user.id);
+        const profile = User.proceedData(user);
+        return { profile, accessibleRoute, doneFeedbackToday };
+    }
+
     static async login(username, password) {
 
         const user = await User.findByUsername(username);
@@ -12,7 +22,7 @@ class AuthService {
             throw new Error('Incorrect username / password');
         }
 
-        if (user.password == '' && user.tempPassword == null) {
+        if (user.password == null && user.tempPassword == null) {
             throw new Error('Something went wrong');
         }
 
@@ -32,18 +42,21 @@ class AuthService {
             }
         }
 
-        // Generate a hash for the access token
-        const accessToken = crypto.randomBytes(32).toString('hex'); // Create a random access token
-        // const hashedToken = crypto.createHash('sha256').update(accessToken).digest('hex'); // Hash the token
-
-        // Store the hashed token in the database
-        await User.storeAccessToken(user.id, accessToken); // Assuming you have a method to store the token
-
         const accessibleRoute = await RouteAuth.getAllowedRoutes(user.role);
 
-        const doneFeedbackToday = await EmployeeFeedback.canSubmitFeedbackToday(user.id);
+        const userId = user.id;
+        const refresh_token_ver = new Date().getTime();
+        await User.updateRefreshTokenVer(userId, refresh_token_ver);
+        const accessTokenPayload = { accessibleRoute, userId, refresh_token_ver };
 
-        return { accessToken, updatePasswordRequired, accessibleRoute, doneFeedbackToday }; // Return the plain access token to the user
+        const accessToken = generateAccessToken(accessTokenPayload);
+        const refreshTokenPayload = { userId, refresh_token_ver };
+        const refreshToken = generateRefreshToken(refreshTokenPayload);
+
+        const doneFeedbackToday = await EmployeeFeedback.canSubmitFeedbackToday(user.id);
+        const profile = User.proceedData(user);
+
+        return { profile, refreshToken, accessToken, updatePasswordRequired, accessibleRoute, doneFeedbackToday }; // Return the plain access token to the user
     }
 
     static async register(data) {
@@ -52,9 +65,17 @@ class AuthService {
             throw new Error('Email already in use');
         }
 
-        // const hashedPassword = await bcrypt.hash(data.password, 10);
         const tempPassword = Math.random().toString(36).substring(2, 8); // Generate a random 6-character string
-        const id = await User.create(data.username, data.email, '', data.phoneNumber, data.role, tempPassword, data.dob, data.gender, data.address);
+        const id = await User.create({
+            username: data.username,
+            email: data.email,
+            phoneNumber: data.phoneNumber,
+            role: data.role,
+            tempPassword: tempPassword,
+            dob: data.dob,
+            gender: data.gender,
+            address: data.address
+        });
         return { id, tempPassword };
     }
 
@@ -68,8 +89,14 @@ class AuthService {
         return userId;
     }
 
+    static async requestResetPassword(id) {
+        const tempPassword = Math.random().toString(36).substring(2, 8); // Generate a random 6-character string
+        await User.updateTempPassword(tempPassword, id);
+        return { id, tempPassword };
+    }
+
     static async resetPassword(id, data) {
-        if (data.newPassword == '') {
+        if (!data.newPassword || data.newPassword == '') {
             throw new Error('No password provided');
 
         } else if (data.newPassword != data.newPasswordConfirm) {
@@ -78,20 +105,20 @@ class AuthService {
 
         const hashedPassword = await bcrypt.hash(data.newPassword, 10);
         const userId = await User.updatePassword(hashedPassword, id);
-
     }
 
+    static async logout(id) {
+        await User.updateRefreshTokenVer(id, null);
+        return true;
+    }
 
-
-    static async removeAccessToken(accessToken) {
-        const user = await User.findByAccessToken(accessToken);
-
-        if (user) {
-            await User.storeAccessToken(user.id, null); // Assuming you have a method to store the token
-            return true;
-        }
-
-        return false;
+    static async refreshAccessToken(refreshToken) {
+        const { userId, refresh_token_ver } = verifyRefreshToken(refreshToken);
+        const user = await User.findById(userId);
+        const accessibleRoute = await RouteAuth.getAllowedRoutes(user.role);
+        const accessTokenPayload = { accessibleRoute, userId, refresh_token_ver };
+        const accessToken = generateAccessToken(accessTokenPayload);
+        return { accessToken };
     }
 }
 
